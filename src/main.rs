@@ -31,6 +31,8 @@ mod cli {
     pub enum WalletCommand {
         /// Generate a new wallet
         Generate,
+        /// Print hex-encoded secret key to stdout
+        Dump,
     }
 }
 
@@ -41,18 +43,27 @@ fn main() -> Result<()> {
         cli::Command::Wallet {
             wallet_path,
             subcommand,
-        } => match &subcommand {
-            cli::WalletCommand::Generate => {
-                let path = PathBuf::from(wallet_path);
-                let password = Password::new()
-                    .with_prompt("New Password")
-                    .with_confirmation("Confirm password", "Passwords mismatching")
-                    .interact()
-                    .unwrap();
+        } => {
+            let path = PathBuf::from(wallet_path);
 
-                wallet::generate_wallet(&path, &password)?;
-            }
-        },
+            match &subcommand {
+                cli::WalletCommand::Generate => {
+                    let password = Password::new()
+                        .with_prompt("New Password")
+                        .with_confirmation("Confirm password", "Passwords mismatching")
+                        .interact()?;
+
+                    wallet::generate_wallet(&path, &password)?;
+                }
+                cli::WalletCommand::Dump => {
+                    let password = Password::new().with_prompt("Password").interact()?;
+                    let secret_key = wallet::dump_wallet(&path, &password)?;
+                    let encoded = hex::encode(secret_key);
+
+                    println!("{encoded}");
+                }
+            };
+        }
     }
 
     Ok(())

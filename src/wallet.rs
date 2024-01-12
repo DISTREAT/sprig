@@ -41,17 +41,23 @@ pub fn generate_wallet(wallet_path: &Path, password: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn open_wallet(wallet_path: &Path, password: &str) -> Result<SigningKey> {
+pub fn dump_wallet(wallet_path: &Path, password: &str) -> Result<Vec<u8>> {
     let wallet = fs::read(wallet_path).context("Failed to read the wallet")?;
     let key = hash_password(password);
     let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
-    let secret_key = match cipher.decrypt(
-        Nonce::from_slice(&wallet[..NONCE_SIZE]),
-        wallet[NONCE_SIZE..].as_ref(),
-    ) {
-        Ok(data) => SigningKey::from_bytes(&data.try_into().unwrap()),
-        Err(_) => return Err(anyhow!("Failed to encrypt the wallet")),
-    };
+
+    cipher
+        .decrypt(
+            Nonce::from_slice(&wallet[..NONCE_SIZE]),
+            wallet[NONCE_SIZE..].as_ref(),
+        )
+        .map_err(|error| anyhow!(error))
+        .context("Failed to encrypt the wallet")
+}
+
+pub fn open_wallet(wallet_path: &Path, password: &str) -> Result<SigningKey> {
+    let wallet = dump_wallet(wallet_path, password)?;
+    let secret_key = SigningKey::from_bytes(&wallet.try_into().unwrap());
 
     Ok(secret_key)
 }
