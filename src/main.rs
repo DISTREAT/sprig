@@ -3,6 +3,8 @@ use clap::Parser;
 use dialoguer::Password;
 use std::path::PathBuf;
 
+mod blockchain;
+mod node;
 mod wallet;
 
 mod cli {
@@ -25,6 +27,17 @@ mod cli {
             #[command(subcommand)]
             subcommand: WalletCommand,
         },
+        /// Serve your own node serving and syncing a local copy of the blockchain
+        Node {
+            #[arg(short, long)]
+            listen_address: Option<String>,
+
+            #[arg(short, long)]
+            public_address: String,
+
+            #[arg(short, long)]
+            bootstrapping_nodes: Vec<String>,
+        },
     }
 
     #[derive(Subcommand)]
@@ -36,7 +49,11 @@ mod cli {
     }
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
+    env_logger::init();
+
+    // TODO: https://github.com/libp2p/rust-libp2p/blob/master/examples/ping/src/main.rs
     let arguments = cli::Arguments::parse();
 
     match &arguments.subcommand {
@@ -63,6 +80,18 @@ fn main() -> Result<()> {
                     println!("{encoded}");
                 }
             };
+        }
+        cli::Command::Node {
+            public_address,
+            listen_address,
+            bootstrapping_nodes,
+        } => {
+            node::server(
+                public_address.to_owned(),
+                listen_address.to_owned(),
+                bootstrapping_nodes.to_owned(),
+            )
+            .await?
         }
     }
 
