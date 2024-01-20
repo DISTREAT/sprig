@@ -46,6 +46,8 @@ mod cli {
         Generate,
         /// Print hex-encoded secret key to stdout
         Dump,
+        /// Print the public address of a wallet
+        Address,
     }
 }
 
@@ -76,6 +78,13 @@ async fn main() -> Result<()> {
                     let password = Password::new().with_prompt("Password").interact()?;
                     let secret_key = wallet::dump_wallet(&path, &password)?;
                     let encoded = hex::encode(secret_key);
+
+                    println!("{encoded}");
+                }
+                cli::WalletCommand::Address => {
+                    let password = Password::new().with_prompt("Password").interact()?;
+                    let secret_key = wallet::open_wallet(&path, &password)?;
+                    let encoded = hex::encode(secret_key.verifying_key().as_bytes());
 
                     println!("{encoded}");
                 }
