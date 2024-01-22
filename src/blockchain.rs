@@ -41,7 +41,19 @@ impl BlockChain {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Block {
+    // pub previous_hash: BlockHash,
     pub timestamp: u64,
+    // pub transaction: Transaction,
+    // pub proof_of_work: Option<Vec<u8>>,
+    // pub miner: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Transaction {
+    pub author: Vec<u8>,
+    pub recipient: Vec<u8>,
+    pub amount: f64,
+    pub signature: Vec<u8>,
 }
 
 impl Block {

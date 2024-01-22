@@ -1,9 +1,12 @@
 use anyhow::Result;
 use clap::Parser;
 use dialoguer::Password;
+use std::env;
 use std::path::PathBuf;
 
+mod api;
 mod blockchain;
+mod network;
 mod node;
 mod wallet;
 
@@ -37,6 +40,9 @@ mod cli {
 
             #[arg(short, long)]
             bootstrapping_nodes: Vec<String>,
+
+            #[arg(short, long)]
+            api_address: Option<String>,
         },
     }
 
@@ -53,9 +59,23 @@ mod cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    let log_level = match env::var("RUST_LOG")
+        .unwrap_or_else(|_| "info".to_owned())
+        .as_str()
+    {
+        "error" => tracing::Level::ERROR,
+        "warn" => tracing::Level::WARN,
+        "info" => tracing::Level::INFO,
+        "debug" => tracing::Level::DEBUG,
+        "trace" => tracing::Level::TRACE,
+        _ => tracing::Level::INFO,
+    };
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::fmt::Subscriber::builder()
+            .with_max_level(log_level)
+            .finish(),
+    )?;
 
-    // TODO: https://github.com/libp2p/rust-libp2p/blob/master/examples/ping/src/main.rs
     let arguments = cli::Arguments::parse();
 
     match &arguments.subcommand {
@@ -94,13 +114,18 @@ async fn main() -> Result<()> {
             public_address,
             listen_address,
             bootstrapping_nodes,
+            api_address,
         } => {
-            node::server(
-                public_address.to_owned(),
-                listen_address.to_owned(),
-                bootstrapping_nodes.to_owned(),
-            )
-            .await?
+            let config = node::NodeServerConfig {
+                public_address: public_address.clone(),
+                listen_address: listen_address.clone(),
+                bootstrapping_nodes: bootstrapping_nodes.clone(),
+                api_address: api_address
+                    .clone()
+                    .unwrap_or_else(|| String::from("0.0.0.0:3034")),
+            };
+
+            node::serve(config).await?;
         }
     }
 
